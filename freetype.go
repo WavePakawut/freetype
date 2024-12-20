@@ -12,9 +12,11 @@ import (
 	"errors"
 	"image"
 	"image/draw"
+	"strings"
 
-	"github.com/golang/freetype/raster"
-	"github.com/golang/freetype/truetype"
+	"github.com/WavePakawut/freetype/raster"
+	"github.com/WavePakawut/freetype/truetype"
+
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 )
@@ -227,10 +229,39 @@ func (c *Context) glyph(glyph truetype.Index, p fixed.Point26_6) (
 // affect pixels below and left of the point.
 //
 // p is a fixed.Point26_6 and can therefore represent sub-pixel positions.
+func isToneMark(r rune) bool {
+	// List of common Thai vowels
+
+	// List of common Thai tone marks
+	toneMarks := "่้๊๋์"
+
+	// Check if the rune is either a vowel or a tone mark
+	return strings.ContainsRune(toneMarks, r)
+}
+func isUpVowel(r rune) bool {
+	// List of common Thai vowels
+	// vowels := "ะัาำิีึืุูเแโใไๅๆ"
+	vowels := "ิีืึำั"
+
+	// Check if the rune is either a vowel or a tone mark
+	return strings.ContainsRune(vowels, r)
+}
+
+func isShiftRightVowel(r rune) bool {
+	// List of common Thai vowels
+	vowels := "ำ"
+
+	// List of common Thai tone marks
+
+	// Check if the rune is either a vowel or a tone mark
+	return strings.ContainsRune(vowels, r)
+}
+
 func (c *Context) DrawString(s string, p fixed.Point26_6) (fixed.Point26_6, error) {
 	if c.f == nil {
 		return fixed.Point26_6{}, errors.New("freetype: DrawText called with a nil font")
 	}
+	var prevrune rune
 	prev, hasPrev := truetype.Index(0), false
 	for _, rune := range s {
 		index := c.f.Index(rune)
@@ -240,7 +271,11 @@ func (c *Context) DrawString(s string, p fixed.Point26_6) (fixed.Point26_6, erro
 				kern = (kern + 32) &^ 63
 			}
 			p.X += kern
+			if isUpVowel(prevrune) && isToneMark(rune) {
+				index = index + 1
+			}
 		}
+		prevrune = rune
 		advanceWidth, mask, offset, err := c.glyph(index, p)
 		if err != nil {
 			return fixed.Point26_6{}, err
